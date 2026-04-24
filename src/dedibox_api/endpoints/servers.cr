@@ -117,6 +117,24 @@ module DediboxApi
         result = @client.call("POST", "/server/boot/normal/#{id}")
         result.try(&.as_bool?) || false
       end
+
+      # Helper combo : bascule le serveur en boot disque ET le
+      # reboote pour que le changement prenne effet. Équivalent
+      # sémantique du `boot_from_disk` OVH (qui gère tout côté
+      # API hébergeur en une seule opération).
+      #
+      # Contrairement à un `reboot` seul (qui laisse `boot_mode` à
+      # `rescue` s'il y était), cette méthode est la seule façon
+      # correcte de revenir sur disque via l'API Dedibox.
+      #
+      # Retourne `true` si les deux appels API ont été acceptés.
+      # L'opérateur doit ensuite attendre le retour SSH côté OS
+      # installé — l'API Dedibox ne propose pas de task async
+      # pollable.
+      def reboot_to_disk(id : Int32, reason : String = "beryl boot-disk") : Bool
+        return false unless boot_normal(id)
+        reboot(id, reason: reason)
+      end
     end
 
     # Identifiants renvoyés par `prepare_rescue`. Dedibox génère un

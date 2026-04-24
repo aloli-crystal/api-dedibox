@@ -135,6 +135,29 @@ describe DediboxApi::Endpoints::Servers do
       stub.last.url.should end_with("/server/boot/normal/186260")
     end
   end
+
+  describe "#reboot_to_disk" do
+    it "enchaîne boot_normal + reboot(reason)" do
+      stub = StubTransport.new
+      stub.responses << {200, "true"} # boot_normal
+      stub.responses << {200, "true"} # reboot
+      client = DediboxApi::Client.new(token: "t", transport: stub)
+      client.servers.reboot_to_disk(186260, reason: "post-install").should be_true
+      # 2 appels HTTP : le 1er vers boot/normal, le 2e vers reboot
+      stub.recorded.size.should eq(2)
+      stub.recorded[0].url.should end_with("/server/boot/normal/186260")
+      stub.recorded[1].url.should contain("/server/reboot/186260?reason=")
+    end
+
+    it "retourne false si boot_normal échoue (ne rebooote pas)" do
+      stub = StubTransport.new
+      stub.responses << {200, "false"} # boot_normal refusé
+      client = DediboxApi::Client.new(token: "t", transport: stub)
+      client.servers.reboot_to_disk(186260).should be_false
+      # Un seul appel : boot_normal. Pas de reboot tentatif après refus.
+      stub.recorded.size.should eq(1)
+    end
+  end
 end
 
 describe DediboxApi::Endpoints::Ip do

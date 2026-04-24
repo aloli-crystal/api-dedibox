@@ -2,6 +2,6 @@ require "./spec_helper"
 
 describe DediboxApi do
   it "expose une version" do
-    DediboxApi::VERSION.should eq("0.1.2")
+    DediboxApi::VERSION.should eq("0.1.3")
   end
 end

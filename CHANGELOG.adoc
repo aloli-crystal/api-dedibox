@@ -9,6 +9,18 @@ et ce projet suit https://semver.org/lang/fr/[Semantic Versioning].
 
 == [Non publié]
 
+== 0.1.3 (24 avril 2026)
+
+=== Ajouté
+
+* `servers.reboot_to_disk(id, reason)` : helper qui enchaîne
+  `boot_normal(id)` puis `reboot(id, reason: …)`. Équivalent
+  sémantique du `boot_from_disk` OVH — évite au caller de
+  connaître la séquence à deux étapes propre à Dedibox (sans
+  `boot_normal` préalable, un simple `reboot` laisse le serveur
+  en rescue). Retourne `false` si `boot_normal` est refusé, sans
+  tenter le reboot.
+
 == 0.1.2 (24 avril 2026)
 
 === Ajouté
