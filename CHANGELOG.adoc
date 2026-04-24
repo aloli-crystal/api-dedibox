@@ -9,6 +9,25 @@ et ce projet suit https://semver.org/lang/fr/[Semantic Versioning].
 
 == [Non publié]
 
+== 0.1.4 (24 avril 2026)
+
+=== Ajouté
+
+* Constante `DediboxApi::Endpoints::Servers::DEFAULT_RESCUE_IMAGE`
+  (= `"debian-12_amd64"`), remontée depuis beryl où elle était
+  hardcodée. Debian 12 reste le choix par défaut le plus stable
+  pour héberger un environnement de provisioning (mfsBSD-in-QEMU,
+  scripts shell, …) et disponible sur toutes les offres Dedibox
+  fin 2026.
+
+=== Modifié
+
+* `servers.prepare_rescue(id, image)` : `image` devient optionnel
+  avec pour valeur par défaut `DEFAULT_RESCUE_IMAGE`. L'appelant
+  peut maintenant écrire `servers.prepare_rescue(id)` sans
+  redéclarer le slug côté client. Rétrocompatible : les appels
+  existants qui passent `image` continuent de fonctionner.
+
 == 0.1.3 (24 avril 2026)
 
 === Ajouté

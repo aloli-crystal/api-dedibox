@@ -25,6 +25,16 @@ module DediboxApi
     # `POST /server/{id}/reverse`, `PUT /server/{id}/reverse`,
     # `POST /reverse/{ip}` retournent toutes « Unknown method ».
     class Servers
+      # Image rescue par défaut utilisée par {#prepare_rescue} quand
+      # l'appelant ne spécifie pas `image`. Debian 12 est le choix le
+      # plus stable pour héberger un environnement de provisioning
+      # (mfsBSD-in-QEMU, scripts shell, …) et reste disponible sur
+      # toutes les offres Dedibox à fin 2026.
+      #
+      # La liste des images disponibles pour un serveur donné est
+      # retournée par {#rescue_images}.
+      DEFAULT_RESCUE_IMAGE = "debian-12_amd64"
+
       def initialize(@client : DediboxApi::Client)
       end
 
@@ -83,12 +93,13 @@ module DediboxApi
       # passer de ssh_key_id.
       #
       # * `image` — slug d'une image renvoyée par {#rescue_images}
-      #   (ex: `"debian-12_amd64"`, `"ubuntu-22.04_amd64v2"`).
+      #   (ex: `"debian-12_amd64"`, `"ubuntu-22.04_amd64v2"`). Défaut :
+      #   {DEFAULT_RESCUE_IMAGE}.
       #
       # Retourne une struct {RescueCredentials} avec les identifiants
       # générés (login `sd-<id>`, password random, IP publique). Utile
       # même si on auth par clé — au moins pour les logs.
-      def prepare_rescue(id : Int32, image : String) : RescueCredentials
+      def prepare_rescue(id : Int32, image : String = DEFAULT_RESCUE_IMAGE) : RescueCredentials
         result = @client.call(
           "POST", "/server/boot/rescue/#{id}",
           body: {"image" => image},

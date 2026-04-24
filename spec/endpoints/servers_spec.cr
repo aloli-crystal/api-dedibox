@@ -97,6 +97,15 @@ describe DediboxApi::Endpoints::Servers do
       creds.ip.should eq("195.154.254.221")
       creds.protocol.should eq("ssh")
     end
+
+    it "utilise DEFAULT_RESCUE_IMAGE (debian-12_amd64) si l'image n'est pas spécifiée" do
+      stub = StubTransport.new
+      stub.responses << {200, %({"login":"sd-1","password":"p","protocol":"ssh","ip":"1.2.3.4"})}
+      client = DediboxApi::Client.new(token: "t", transport: stub)
+      client.servers.prepare_rescue(1)
+      JSON.parse(stub.last.body)["image"].should eq(DediboxApi::Endpoints::Servers::DEFAULT_RESCUE_IMAGE)
+      DediboxApi::Endpoints::Servers::DEFAULT_RESCUE_IMAGE.should eq("debian-12_amd64")
+    end
   end
 
   describe "#reboot" do
