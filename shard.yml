@@ -1,0 +1,16 @@
+name: dedibox-api
+version: 0.1.0
+
+description: >
+  Client Crystal pur (stdlib uniquement) pour l'API Dedibox / Online.net
+  v1. Couvre les endpoints nécessaires au provisioning : info serveur,
+  liste des images de rescue, bascule en mode rescue, reboot, retour
+  en boot disque, gestion des clés SSH IAM. Auth par Bearer token simple,
+  zéro dépendance externe.
+
+authors:
+  - ALOLI sas <philippe@aloli.fr>
+
+crystal: ">= 1.19.1"
+
+license: MIT

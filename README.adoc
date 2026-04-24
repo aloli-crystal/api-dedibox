@@ -1,0 +1,82 @@
+= dedibox-api
+:toc: left
+:source-highlighter: rouge
+:icons: font
+
+Client Crystal pur (stdlib uniquement) pour l'API Dedibox / Online.net v1.
+
+== Installation
+
+[source,yaml]
+----
+dependencies:
+  dedibox-api:
+    github: aloli-crystal/crystal-api-dedibox
+    branch: production
+----
+
+== Usage
+
+[source,crystal]
+----
+require "dedibox-api"
+
+client = DediboxApi::Client.new(token: ENV["DEDIBOX_TOKEN"])
+
+# Info serveur
+info = client.servers.info(186260)
+puts info.public_ip           # "195.154.254.221"
+puts info.boot_mode           # "normal" ou "rescue"
+
+# Passage en rescue Debian 12 + reboot
+images = client.servers.rescue_images(186260)
+creds = client.servers.prepare_rescue(186260, "debian-12_amd64")
+puts creds.login              # "sd-186260"
+puts creds.password           # password généré pour le rescue
+client.servers.reboot(186260, reason: "bootstrap FreeBSD")
+
+# Retour disque après bootstrap
+client.servers.boot_normal(186260)
+client.servers.reboot(186260, reason: "boot-hd post install")
+----
+
+== Authentification
+
+Token généré depuis la console :
+https://console.online.net/fr/api/access
+
+Scope recommandé : `all` (restreignable après mise en production).
+
+Stocké par beryl dans `~/.beryl/.env.yml` sous
+`<société>.dedibox.DEDIBOX_TOKEN`.
+
+== Endpoints couverts
+
+[cols="1,2",options="header"]
+|===
+|Méthode |But dans beryl
+
+|`servers.list` | liste des IDs serveurs du compte
+|`servers.info(id)` | détail (offer, hostname, IPs, boot_mode…)
+|`servers.rescue_images(id)` | images rescue dispo (Debian / Ubuntu)
+|`servers.prepare_rescue(id, image)` | sélectionne l'image rescue
+|`servers.reboot(id)` | reboot bare metal (applique rescue préparé)
+|`servers.boot_normal(id)` | retour boot disque (post-bootstrap)
+|`ssh_keys.list` | liste des clés SSH IAM du compte
+|`ssh_keys.info(id)` | détail d'une clé
+|`ssh_keys.create(desc, key)` | ajoute une clé publique
+|`ssh_keys.delete(id)` | retire une clé
+|===
+
+== Spécificités Dedibox vs OVH/Scaleway
+
+- **IDs entiers** (pas de `serviceName` textuel comme OVH)
+- **Pas de task async** : les POST retournent immédiatement, on polle
+  côté SSH pour vérifier l'état
+- **Clés SSH globales au compte** (injectées automatiquement en rescue)
+- **Pas d'endpoint reverse dédié** : le reverse vit dans la struct
+  `Server#ips[].reverse` (accessible via `Server#public_reverse`)
+
+== Licence
+
+MIT. Voir `LICENSE`.
