@@ -60,6 +60,18 @@ describe DediboxApi::Endpoints::Servers do
     end
   end
 
+  describe "#update_hostname" do
+    it "PUT /server/<id> avec hostname en body" do
+      stub = StubTransport.new
+      stub.responses << {200, "true"}
+      client = DediboxApi::Client.new(token: "t", transport: stub)
+      client.servers.update_hostname(186260, "cookie").should be_true
+      stub.last.method.should eq("PUT")
+      stub.last.url.should end_with("/server/186260")
+      JSON.parse(stub.last.body)["hostname"].should eq("cookie")
+    end
+  end
+
   describe "#rescue_images" do
     it "retourne la liste des slugs" do
       stub = StubTransport.new

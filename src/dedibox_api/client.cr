@@ -148,7 +148,12 @@ module DediboxApi
       @ssh_keys ||= Endpoints::SshKeys.new(self)
     end
 
+    def user : Endpoints::User
+      @user ||= Endpoints::User.new(self)
+    end
+
     @servers : Endpoints::Servers?
     @ssh_keys : Endpoints::SshKeys?
+    @user : Endpoints::User?
   end
 end

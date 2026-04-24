@@ -2,6 +2,7 @@ require "./dedibox_api/version"
 require "./dedibox_api/errors"
 require "./dedibox_api/endpoints/servers"
 require "./dedibox_api/endpoints/ssh_keys"
+require "./dedibox_api/endpoints/user"
 require "./dedibox_api/client"
 
 # DediboxApi — client Crystal pur (stdlib uniquement) pour l'API

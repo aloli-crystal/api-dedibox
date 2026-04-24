@@ -10,12 +10,20 @@ module DediboxApi
     # Pattern général (confirmé en live 24 avril 2026) :
     #   * `GET    /server/`                         → liste URIs
     #   * `GET    /server/{id}`                     → détail
+    #   * `PUT    /server/{id}`                     → update (hostname…)
     #   * `GET    /server/rescue_images/{id}`       → images rescue dispo
     #   * `POST   /server/boot/rescue/{id}`         → prépare passage en rescue
     #                                                  (retourne credentials)
     #   * `POST   /server/reboot/{id}?reason=...`   → reboot bare metal
     #                                                  (reason obligatoire)
     #   * `POST   /server/boot/normal/{id}`         → retour boot disque
+    #
+    # Limitation connue : l'API Dedibox n'expose PAS d'endpoint public
+    # pour modifier le reverse DNS d'une IP. L'opération se fait via la
+    # console web (https://console.online.net → Serveur → IP failover /
+    # Reverse DNS) ou via ticket support. Les tentatives
+    # `POST /server/{id}/reverse`, `PUT /server/{id}/reverse`,
+    # `POST /reverse/{ip}` retournent toutes « Unknown method ».
     class Servers
       def initialize(@client : DediboxApi::Client)
       end
@@ -39,6 +47,23 @@ module DediboxApi
       # `location`, etc. Voir {Server} pour l'accès structuré.
       def info(id : Int32) : Server
         Server.new(@client.call("GET", "/server/#{id}").not_nil!)
+      end
+
+      # Met à jour les champs modifiables d'un serveur. Aujourd'hui
+      # seul `hostname` (nom console Dedibox, visible dans le panel)
+      # est couvert — l'API accepte aussi d'autres champs (`support`,
+      # `anti_ddos`, `proactive_monitoring`) mais beryl n'en a pas
+      # l'usage. Retourne `true` si l'update a été appliqué.
+      #
+      # Attention : ce hostname est celui AFFICHÉ dans la console
+      # Dedibox. Le hostname système (uname -n) est géré côté OS et
+      # n'est pas modifié par cet appel.
+      def update_hostname(id : Int32, hostname : String) : Bool
+        result = @client.call(
+          "PUT", "/server/#{id}",
+          body: {"hostname" => hostname},
+        )
+        result.try(&.as_bool?) || false
       end
 
       # Liste des images de rescue disponibles pour un serveur (slugs).

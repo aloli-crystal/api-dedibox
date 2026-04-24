@@ -58,6 +58,7 @@ Stocké par beryl dans `~/.beryl/.env.yml` sous
 
 |`servers.list` | liste des IDs serveurs du compte
 |`servers.info(id)` | détail (offer, hostname, IPs, boot_mode…)
+|`servers.update_hostname(id, name)` | modifie le hostname console
 |`servers.rescue_images(id)` | images rescue dispo (Debian / Ubuntu)
 |`servers.prepare_rescue(id, image)` | sélectionne l'image rescue
 |`servers.reboot(id)` | reboot bare metal (applique rescue préparé)
@@ -66,7 +67,22 @@ Stocké par beryl dans `~/.beryl/.env.yml` sous
 |`ssh_keys.info(id)` | détail d'une clé
 |`ssh_keys.create(desc, key)` | ajoute une clé publique
 |`ssh_keys.delete(id)` | retire une clé
+|`user.info` | info compte (id, login, email, nom, société)
 |===
+
+== Limitations connues
+
+- **Reverse DNS non modifiable via l'API.** L'API Dedibox v1 n'expose
+  pas d'endpoint public pour changer le reverse d'une IP. Les
+  tentatives `POST /server/{id}/reverse`, `PUT /reverse/{ip}`,
+  `POST /reverse` retournent toutes `Unknown method`. L'opération
+  doit se faire via la console web
+  (`Serveur → IP failover / Reverse DNS`) ou par ticket support.
+- **Pas d'info disques / RAID** au niveau API. À récupérer en SSH
+  depuis le rescue (`lsblk`, `smartctl`) — c'est ce que fait `beryl scan`.
+- **Pas de task async.** Les POST retournent synchrones (`true`/`false`
+  ou credentials) ; on polle côté SSH pour observer l'effet réel
+  (reboot terminé, rescue joignable).
 
 == Spécificités Dedibox vs OVH/Scaleway
 
