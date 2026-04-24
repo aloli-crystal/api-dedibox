@@ -1,5 +1,5 @@
 name: dedibox-api
-version: 0.1.1
+version: 0.1.2
 
 description: >
   Client Crystal pur (stdlib uniquement) pour l'API Dedibox / Online.net
@@ -14,3 +14,8 @@ authors:
 crystal: ">= 1.19.1"
 
 license: MIT
+
+development_dependencies:
+  ameba:
+    github: crystal-ameba/ameba
+    version: "~> 1.6"

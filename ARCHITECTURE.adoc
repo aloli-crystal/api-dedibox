@@ -1,0 +1,193 @@
+= dedibox-api — Architecture
+:toc: left
+:toc-title: Table des matières
+:toclevels: 3
+:source-highlighter: rouge
+:icons: font
+
+Ce document décrit le modèle d'authentification, les endpoints
+couverts, les formats d'API découverts en live et la taxonomie
+d'erreurs exposée par ce shard.
+
+== Périmètre
+
+[cols="1,3"]
+|===
+| dedibox-api fait | dedibox-api ne fait pas
+
+| Authentification par `Authorization: Bearer <token>`.
+| OAuth, JWT, signature HMAC (l'API Dedibox v1 ne les expose pas).
+
+| Construction des URL `https://api.online.net/api/v1/...`.
+| Endpoints Dedibox Virtual Server (VPS) ou Dedibox Rental (pas
+  utiles pour le provisioning bare-metal que cible beryl).
+
+| Transport HTTP abstrait, injectable, stdlib par défaut.
+| Client HTTP asynchrone à la place de `HTTP::Client`.
+
+| Taxonomie d'erreurs (401 / 403 / 404 / 429 / autres).
+| Backoff automatique sur 429 (l'appelant gère `retry_after`).
+
+| Normalisation des IDs (URIs `/api/v1/server/X` → entier `X`).
+| Reverse DNS (l'API Dedibox n'expose pas d'endpoint pour le modifier).
+|===
+
+== Décisions clés
+
+=== ADR-001 — Pure stdlib Crystal (Accepted)
+
+*Contexte.* Le shard vise une intégration dans crystal-beryl, qui
+est déjà en pure stdlib. Ajouter une dépendance (crest, halite…)
+démultiplierait la surface de maintenance.
+
+*Décision.* dedibox-api n'utilise que `HTTP::Client`, `JSON` et
+`URI` de la stdlib. Aucun `dependencies:` dans `shard.yml`.
+
+*Conséquences.* Tests basés sur un `StubTransport` maison, plus
+simple et explicite qu'un `WebMock` générique.
+
+=== ADR-002 — Authentification par Bearer token (Accepted)
+
+*Contexte.* L'API Dedibox v1 demande un seul en-tête :
+`Authorization: Bearer <TOKEN>`. Le token est généré manuellement
+depuis https://console.online.net/fr/api/access. Pas de signature
+HMAC, pas de timestamp, pas de challenge — plus simple qu'OVH,
+équivalent à Scaleway.
+
+*Décision.* `Client#call` pose systématiquement l'en-tête. Aucune
+logique de rotation : si le token est révoqué, l'API renvoie 401
+et le client lève `AuthenticationError`.
+
+=== ADR-003 — IDs entiers normalisés (Accepted)
+
+*Contexte.* L'API Dedibox renvoie systématiquement ses listes sous
+forme d'URIs string : `["/api/v1/server/186260"]`, pas
+`[186260]`. Pour chaque appel downstream il faudrait re-parser.
+
+*Décision.* `#list` normalise en `Array(Int32)` immédiatement. Le
+caller manipule des entiers, `#info(id)` refabrique l'URL.
+
+*Conséquences.* Si un jour Dedibox change le préfixe (`/api/v1/` →
+`/api/v2/`), un seul endroit à adapter. Les URIs originales sont
+perdues, mais aucun caller beryl n'en a l'usage.
+
+=== ADR-004 — Forme des endpoints confirmée en live (Accepted)
+
+*Contexte.* La documentation publique Dedibox
+(https://console.online.net/fr/api/) est incomplète et
+partiellement obsolète. Plusieurs endpoints logiquement nommés
+(`POST /server/rescue/{id}`, `POST /server/boot_normal/{id}`,
+`POST /server/reverse/{id}`) retournent « Unknown method ».
+
+*Décision.* Tous les endpoints exposés par ce shard ont été
+testés en live sur serveur 186260 (ALOLI) le 24 avril 2026 avec
+un token valide. Les formats exacts sont documentés dans le
+`CHANGELOG` pour permettre à d'autres clients de s'y référer.
+
+*Formes réelles :*
+
+[cols="2,1,3",options="header"]
+|===
+| Opération | Méthode | URL réelle
+
+| Liste serveurs | GET  | `/server/`
+| Info serveur | GET  | `/server/{id}`
+| Update (hostname) | PUT  | `/server/{id}` body `{"hostname":"…"}`
+| Images rescue | GET  | `/server/rescue_images/{id}`
+| Préparer rescue | POST | `/server/boot/rescue/{id}` body `{"image":"…"}`
+| Reboot | POST | `/server/reboot/{id}?reason=…` *(reason OBLIGATOIRE)*
+| Boot disque | POST | `/server/boot/normal/{id}`
+| Clés SSH IAM | GET/POST/DELETE | `/user/key/ssh[/{id}]`
+| Compte courant | GET  | `/user`
+|===
+
+=== ADR-005 — Pas de task async (Accepted)
+
+*Contexte.* OVH expose des `Task` à poller (`GET /dedicated/server/
+{X}/task/{id}`) pour observer la progression d'un reboot ou d'une
+install. Dedibox ne propose rien d'équivalent : les POST retournent
+synchrones (`true`/`false` ou credentials), et l'observation de
+l'état réel passe par un `GET /server/{id}` (champ `boot_mode`) ou
+par tentative de SSH sur la machine.
+
+*Décision.* Ce shard n'a pas de notion de `Task`. L'appelant
+(beryl) poll l'état côté SSH, comme il le fait déjà pour Scaleway.
+
+=== ADR-006 — Reverse DNS hors périmètre API (Accepted)
+
+*Contexte.* Sur OVH, beryl utilise `POST /ip/{ip}/reverse` pour
+poser le reverse automatiquement dans le flow `beryl scan --dns`.
+Côté Dedibox, aucun endpoint public n'existe — tentatives
+exhaustives documentées dans le README et le CHANGELOG.
+
+*Décision.* `servers.update_hostname` expose la modification du
+hostname console mais PAS de méthode reverse. beryl doit soit
+demander à l'opérateur de le poser manuellement dans
+https://console.online.net, soit ouvrir un ticket support
+(automatisable via un autre endpoint si besoin plus tard).
+
+*Conséquences.* Le parcours `beryl scan --dns` pour un host
+Dedibox sera partiel : records DNS + rename hostname automatiques,
+reverse manuel.
+
+=== ADR-007 — `Server` et `SshKey` comme structs wrappers (Accepted)
+
+*Contexte.* L'API renvoie du JSON riche avec des champs dont
+certains peuvent manquer selon l'offre (`hardware_watch`,
+`proactive_monitoring`, `location`…). Typer exhaustivement côté
+Crystal demanderait beaucoup de `Serializable` + nombreux
+`optional`.
+
+*Décision.* Les structs `Server`, `Ip`, `SshKey`, `UserInfo`,
+`RescueCredentials` exposent les champs dont beryl a l'usage, avec
+des getters tolérants (`@raw["hostname"]?.try(&.as_s?) || ""`).
+Le champ `raw : JSON::Any` reste public pour accéder aux détails
+exotiques (location rack/DC, switch port, etc.).
+
+*Conséquences.* Ajout rapide d'un champ (pas besoin de rouvrir un
+JSON serializer), mais pas de vérification statique sur la forme
+de la réponse. Acceptable puisque l'API Dedibox est stable (v1
+depuis 2015).
+
+== Taxonomie d'erreurs
+
+Dedibox renvoie un format d'erreur uniforme :
+`{"error":"message humain","code":N}`. Le shard extrait le code
+entier et le mappe en exception typée :
+
+* HTTP 401/403 → `AuthenticationError` (token invalide / scope
+  insuffisant). Message : corps brut + URL.
+* HTTP 404 → `NotFound` (ressource inexistante).
+* HTTP 429 → `RateLimited` (expose `retry_after` si présent dans
+  le corps — Dedibox le fournit parfois en `retryAfter` ou
+  `retry_after`).
+* Autres → `ApiError` avec `status_code` et `error_code`.
+
+Chaque exception hérite de `DediboxApi::ApiError` pour un `rescue`
+global si besoin.
+
+== Testabilité
+
+`StubTransport` dans `spec/spec_helper.cr` enregistre chaque
+requête (method, URL, headers, body) et renvoie des `{status,
+body}` prédéfinis. Les 28 specs couvrent :
+
+* Chaque verbe (GET / POST / PUT / DELETE) et sérialisation body.
+* Chaque code d'erreur (401, 404, 429, 500).
+* Chaque endpoint avec fixtures capturées du serveur réel
+  (payload `/server/186260`, format `/server/rescue_images`).
+* Les structs wrapper et leurs getters tolérants.
+
+Aucun test ne touche le réseau. La validation live a été faite
+manuellement avec un token réel (cf. README).
+
+== Références
+
+* https://console.online.net/fr/api/ — doc officielle (partielle).
+* https://console.online.net/fr/api/access — génération de tokens.
+* https://github.com/aloli-crystal/crystal-api-ovh — shard pendant
+  pour OVHcloud.
+* https://github.com/aloli-crystal/crystal-api-scaleway — shard
+  pendant pour Scaleway Elastic Metal.
+* https://github.com/aloli-crystal/crystal-beryl — outil beryl qui
+  consomme ce shard.

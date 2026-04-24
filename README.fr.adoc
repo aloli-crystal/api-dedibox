@@ -1,0 +1,185 @@
+= dedibox-api
+:toc: left
+:toc-title: Table des matières
+:toclevels: 3
+:source-highlighter: rouge
+:icons: font
+
+Client Crystal pur (stdlib uniquement) pour l'API
+https://console.online.net/fr/api/[Dedibox / Online.net REST v1].
+Couvre les endpoints nécessaires au provisioning bare-metal :
+info serveur, liste des images de rescue, bascule en rescue,
+reboot, retour boot disque, update hostname, gestion des clés
+SSH IAM.
+
+[NOTE]
+====
+*dedibox-api* s'intègre dans l'écosystème Aloli aux côtés de
+https://github.com/aloli-crystal/crystal-api-ovh[crystal-api-ovh]
+et
+https://github.com/aloli-crystal/crystal-api-scaleway[crystal-api-scaleway]
+(ses pendants pour les autres hébergeurs), et
+https://github.com/aloli-crystal/crystal-beryl[crystal-beryl]
+(outil agentless de provisioning FreeBSD qui consomme les trois).
+Zéro dépendance externe : uniquement `HTTP::Client`, `JSON`,
+`URI` de la stdlib Crystal.
+====
+
+== Pourquoi dedibox-api
+
+Dedibox (filiale d'Iliad depuis Online.net) continue de vendre sa
+gamme historique de serveurs dédiés, séparée de l'offre cloud
+Scaleway Elastic Metal du même groupe. Les deux produits coexistent
+avec des API distinctes : tokens différents, formats d'ID
+différents (entier côté Dedibox, UUID côté Scaleway), endpoints
+différents.
+
+Aucun SDK officiel Dedibox en Crystal. Ce shard fournit une API
+Crystal idiomatique, testable par injection de transport, avec un
+périmètre réduit aux besoins réels de provisioning bare-metal.
+
+== Caractéristiques
+
+* *Pure Crystal* : aucune dépendance runtime (stdlib `HTTP::Client`,
+  `JSON`, `URI`).
+* *Authentification simple* : en-tête `Authorization: Bearer <token>`
+  posé sur chaque requête.
+* *Transport injectable* : `HttpTransport` abstrait, stub trivial
+  pour les specs.
+* *Structs wrapper tolérants* : `Server`, `Ip`, `SshKey`, `UserInfo`,
+  `RescueCredentials` — champs optionnels gérés, `raw` exposé pour
+  les détails exotiques.
+* *Taxonomie d'erreurs* : `AuthenticationError` (401/403),
+  `NotFound` (404), `RateLimited` (429, avec `retry_after`),
+  `ApiError` (autre, expose `status_code` + `error_code` Dedibox).
+
+== Périmètre
+
+[cols="1,3"]
+|===
+| dedibox-api fait | dedibox-api ne fait pas (limitations API)
+
+| Liste, info, update hostname des serveurs Dedibox.
+| Listing des disques / RAID côté API (récupérable en SSH depuis
+  le rescue).
+
+| Préparation du rescue (`POST /server/boot/rescue`) + reboot.
+| Reverse DNS modifiable (aucun endpoint API public, passer par
+  la console web ou ticket support).
+
+| Retour boot disque (`POST /server/boot/normal`).
+| Tasks asynchrones à poller (Dedibox ne les expose pas, on poll
+  l'état via `GET /server/{id}` ou par tentative SSH).
+
+| Gestion des clés SSH IAM globales au compte.
+| Endpoints Dedibox Virtual Server (VPS) ou Dedibox Rental
+  (hors périmètre beryl).
+|===
+
+== Installation
+
+[source,yaml]
+----
+dependencies:
+  dedibox-api:
+    github: aloli-crystal/crystal-api-dedibox
+    branch: production
+----
+
+== Authentification
+
+Token généré depuis la console :
+https://console.online.net/fr/api/access
+
+Scope recommandé : `all` (restreignable plus tard). Le token est
+affiché *une seule fois* lors de la création — à stocker sur-le-champ.
+
+Convention beryl : stocké dans `~/.beryl/.env.yml` sous
+`<société>.dedibox.DEDIBOX_TOKEN`.
+
+== Usage
+
+[source,crystal]
+----
+require "dedibox-api"
+
+client = DediboxApi::Client.new(token: ENV["DEDIBOX_TOKEN"])
+
+# Identifier le compte correspondant au token
+me = client.user.info
+puts "Connecté en tant que #{me.display_name} (#{me.login})"
+
+# Info serveur
+info = client.servers.info(186260)
+puts "public_ip  : #{info.public_ip}"         # 195.154.254.221
+puts "reverse    : #{info.public_reverse}"     # reverse actuel
+puts "boot_mode  : #{info.boot_mode}"          # normal ou rescue
+puts "hostname   : #{info.hostname}"           # nom console Dedibox
+
+# Renommer côté console
+client.servers.update_hostname(186260, "loulou-cookie")
+
+# Bascule en rescue Debian 12
+images = client.servers.rescue_images(186260)
+# => ["ubuntu-22.04_amd64v2", "debian-12_amd64", "debian-10_amd64"]
+
+creds = client.servers.prepare_rescue(186260, "debian-12_amd64")
+puts "rescue login    : #{creds.login}"       # sd-186260
+puts "rescue password : #{creds.password}"     # password généré
+
+client.servers.reboot(186260, reason: "bootstrap FreeBSD")
+
+# ... beryl lance mfsBSD-in-QEMU, installe FreeBSD, etc.
+
+# Retour disque après bootstrap
+client.servers.boot_normal(186260)
+client.servers.reboot(186260, reason: "first boot on disk")
+----
+
+== Endpoints couverts
+
+[cols="1,2",options="header"]
+|===
+| Méthode | But
+
+| `servers.list` | liste des IDs serveurs du compte
+| `servers.info(id)` | détail (offer, hostname, IPs, boot_mode…)
+| `servers.update_hostname(id, name)` | modifie le hostname console
+| `servers.rescue_images(id)` | images rescue dispo (Debian / Ubuntu)
+| `servers.prepare_rescue(id, image)` | sélectionne l'image rescue
+| `servers.reboot(id, reason)` | reboot (reason OBLIGATOIRE)
+| `servers.boot_normal(id)` | retour boot disque (post-bootstrap)
+| `ssh_keys.list` | liste des clés SSH IAM du compte
+| `ssh_keys.info(id)` | détail d'une clé
+| `ssh_keys.create(desc, key)` | ajoute une clé publique
+| `ssh_keys.delete(id)` | retire une clé
+| `user.info` | info compte (id, login, email, nom, société)
+|===
+
+Voir `ARCHITECTURE.adoc` pour le détail des décisions, les formes
+exactes d'URL (qui diffèrent parfois de la documentation publique)
+et la taxonomie d'erreurs.
+
+== Exemple exécutable
+
+`examples/provision_freebsd.cr` : cycle complet prepare_rescue →
+reboot → attente SSH → boot_normal → reboot, avec garde-fou
+`DEDIBOX_CONFIRM=yes` pour éviter tout lancement accidentel.
+
+== Tests
+
+[source,console]
+----
+$ crystal spec
+.............................
+Finished in 1.3 milliseconds
+28 examples, 0 failures, 0 errors, 0 pending
+----
+
+Les specs utilisent un `StubTransport` pur stdlib (aucun appel
+réseau). La validation live a été faite manuellement avec un token
+réel sur un serveur de test (ALOLI #186260).
+
+== Licence
+
+MIT. Voir `LICENSE`.

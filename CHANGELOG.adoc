@@ -1,0 +1,107 @@
+= Changelog
+:toc: left
+:toclevels: 2
+
+Toutes les modifications notables de ce projet sont documentées dans ce fichier.
+
+Le format s'inspire de https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
+et ce projet suit https://semver.org/lang/fr/[Semantic Versioning].
+
+== [Non publié]
+
+== 0.1.2 (24 avril 2026)
+
+=== Ajouté
+
+* Documentation complète type Aloli : `CHANGELOG.adoc`, `ARCHITECTURE.adoc`,
+  `README.fr.adoc`, exemple exécutable `examples/provision_freebsd.cr`.
+* Dépendance de développement `ameba` dans `shard.yml` (linting).
+
+== 0.1.1 (24 avril 2026)
+
+=== Ajouté
+
+* `servers.update_hostname(id, name)` : modifie le hostname affiché
+  dans la console Dedibox via `PUT /server/{id}` avec
+  `{"hostname": "..."}`. Validé live sur serveur 186260.
+* `user.info` : `GET /user` → login, email, nom, société du compte
+  propriétaire du token. Utile pour `beryl init` (confirmer à quel
+  compte correspond le token avant d'écrire la config).
+* `DediboxApi::Endpoints::UserInfo` struct avec `#display_name` qui
+  assemble `first_name` + `last_name` et tolère les champs absents.
+
+=== Limitations documentées
+
+* API Dedibox n'expose PAS d'endpoint public pour modifier le reverse
+  DNS. Les tentatives `POST /server/{id}/reverse`, `PUT /reverse/{ip}`,
+  `POST /reverse` retournent toutes « Unknown method ». L'opération
+  passe par la console web ou un ticket support.
+* Pas d'info disques/RAID côté API — à récupérer en SSH depuis le
+  rescue (c'est ce que fait `beryl scan`).
+
+== 0.1.0 (24 avril 2026)
+
+=== Ajouté
+
+==== Fondations du projet
+
+* Squelette initial (`shard.yml`, `LICENSE` MIT, README).
+* Convention Aloli : branche par défaut `production`, messages de
+  commit en français, licence MIT, auteurs `ALOLI sas`.
+
+==== Cœur du client
+
+* `DediboxApi::Client` : authentification par `Authorization: Bearer`,
+  sans signature ni offset d'horloge (API Dedibox simple comme
+  Scaleway, contrairement à OVH).
+* Endpoint par défaut `https://api.online.net/api/v1`, surchargeable
+  pour les tests ou un proxy.
+* Transport HTTP abstrait `DediboxApi::HttpTransport` avec
+  implémentation `DefaultHttpTransport` (stdlib `HTTP::Client`) ;
+  permet l'injection d'un double en test via `StubTransport`.
+
+==== Endpoints de provisioning (serveurs)
+
+* `servers.list` : `GET /server/` → liste normalisée d'IDs entiers
+  (Dedibox renvoie des URIs `/api/v1/server/X`, on extrait l'entier).
+* `servers.info(id)` : `GET /server/{id}` → struct {Server} avec
+  accès typé (`id`, `offer`, `hostname`, `power`, `boot_mode`,
+  `public_ip`, `public_reverse`, `ips[]`).
+* `servers.rescue_images(id)` : `GET /server/rescue_images/{id}` →
+  slugs d'images disponibles (ex. `debian-12_amd64`,
+  `ubuntu-22.04_amd64v2`).
+* `servers.prepare_rescue(id, image)` : `POST /server/boot/rescue/{id}`
+  → positionne `boot_mode` à `rescue`, retourne {RescueCredentials}
+  (login `sd-<id>`, password généré, IP, protocole).
+* `servers.reboot(id, reason)` : `POST /server/reboot/{id}?reason=…`
+  → reboot effectif. `reason` est OBLIGATOIRE côté API Dedibox (sans,
+  retourne `false` silencieusement).
+* `servers.boot_normal(id)` : `POST /server/boot/normal/{id}` →
+  retour boot disque (post-bootstrap).
+
+==== Clés SSH IAM
+
+* `ssh_keys.list`, `ssh_keys.info(id)`, `ssh_keys.create(desc, key)`,
+  `ssh_keys.delete(id)` — gestion du trousseau global du compte.
+  Les clés IAM sont injectées automatiquement par Dedibox dans tout
+  passage en rescue (pas besoin de lier une clé à un serveur).
+
+==== Taxonomie d'erreurs
+
+* `DediboxApi::ApiError` (base).
+* `AuthenticationError` (HTTP 401/403 — token invalide ou révoqué).
+* `NotFound` (HTTP 404).
+* `RateLimited` (HTTP 429, expose `retry_after`).
+* `ApiError` (autres, expose `status_code` et `error_code` — qui
+  correspond au champ `code` dans le format Dedibox
+  `{"error":"...","code":N}`).
+
+==== Découvertes API (format exact confirmé en live)
+
+* `POST /server/rescue/{id}` retourne « Unknown method » — la forme
+  correcte est `POST /server/boot/rescue/{id}`.
+* `POST /server/reboot/{id}` sans `reason=` → `false` silencieux ;
+  avec `?reason=...` → `true` et reboot effectif.
+* `POST /server/boot/normal/{id}` (pas `/server/boot_normal/{id}`).
+* Le reverse DNS est lu via `Server#ips[].reverse` — il n'y a pas
+  d'endpoint dédié.
