@@ -15,9 +15,9 @@ SSH IAM.
 [NOTE]
 ====
 *api-dedibox* s'intègre dans l'écosystème Aloli aux côtés de
-https://github.com/aloli-crystal/crystal-api-ovh[crystal-api-ovh]
+https://github.com/aloli-crystal/api-ovh[api-ovh]
 et
-https://github.com/aloli-crystal/crystal-api-scaleway[crystal-api-scaleway]
+https://github.com/aloli-crystal/api-scaleway[api-scaleway]
 (ses pendants pour les autres hébergeurs), et
 https://github.com/aloli-crystal/beryl[beryl]
 (outil agentless de provisioning FreeBSD qui consomme les trois).
