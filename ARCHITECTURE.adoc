@@ -36,7 +36,7 @@ d'erreurs exposée par ce shard.
 
 === ADR-001 — Pure stdlib Crystal (Accepted)
 
-*Contexte.* Le shard vise une intégration dans crystal-beryl, qui
+*Contexte.* Le shard vise une intégration dans beryl, qui
 est déjà en pure stdlib. Ajouter une dépendance (crest, halite…)
 démultiplierait la surface de maintenance.
 
@@ -189,5 +189,5 @@ manuellement avec un token réel (cf. README).
   pour OVHcloud.
 * https://github.com/aloli-crystal/crystal-api-scaleway — shard
   pendant pour Scaleway Elastic Metal.
-* https://github.com/aloli-crystal/crystal-beryl — outil beryl qui
+* https://github.com/aloli-crystal/beryl — outil beryl qui
   consomme ce shard.

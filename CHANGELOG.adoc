@@ -7,7 +7,20 @@ Toutes les modifications notables de ce projet sont documentées dans ce fichier
 Le format s'inspire de https://keepachangelog.com/fr/1.1.0/[Keep a Changelog]
 et ce projet suit https://semver.org/lang/fr/[Semantic Versioning].
 
-== [Non publié]
+== 0.1.5 (29 avril 2026)
+
+=== Modifié
+
+* **Repo GitHub renommé** `aloli-crystal/crystal-api-dedibox` →
+  `aloli-crystal/api-dedibox` (convention de nommage Aloli : les
+  créations originales abandonnent le préfixe `crystal-`). Les anciens
+  liens redirigent automatiquement.
+* Champ `name:` du `shard.yml` mis à jour de `dedibox-api` à `api-dedibox`
+  (alignement avec le nom du repo). Le module reste `DediboxApi`
+  (sémantiquement plus naturel).
+* Nouveau fichier d'entrée shim `src/api-dedibox.cr` (charge
+  `src/dedibox_api.cr`) ; `require "dedibox-api"` devient
+  `require "api-dedibox"`.
 
 == 0.1.4 (24 avril 2026)
 

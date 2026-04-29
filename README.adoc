@@ -1,4 +1,4 @@
-= dedibox-api
+= api-dedibox
 :toc: left
 :source-highlighter: rouge
 :icons: font
@@ -10,8 +10,8 @@ Client Crystal pur (stdlib uniquement) pour l'API Dedibox / Online.net v1.
 [source,yaml]
 ----
 dependencies:
-  dedibox-api:
-    github: aloli-crystal/crystal-api-dedibox
+  api-dedibox:
+    github: aloli-crystal/api-dedibox
     branch: production
 ----
 
@@ -19,7 +19,7 @@ dependencies:
 
 [source,crystal]
 ----
-require "dedibox-api"
+require "api-dedibox"
 
 client = DediboxApi::Client.new(token: ENV["DEDIBOX_TOKEN"])
 

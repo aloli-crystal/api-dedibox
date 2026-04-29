@@ -1,4 +1,4 @@
-= dedibox-api
+= api-dedibox
 :toc: left
 :toc-title: Table des matières
 :toclevels: 3
@@ -14,18 +14,18 @@ SSH IAM.
 
 [NOTE]
 ====
-*dedibox-api* s'intègre dans l'écosystème Aloli aux côtés de
+*api-dedibox* s'intègre dans l'écosystème Aloli aux côtés de
 https://github.com/aloli-crystal/crystal-api-ovh[crystal-api-ovh]
 et
 https://github.com/aloli-crystal/crystal-api-scaleway[crystal-api-scaleway]
 (ses pendants pour les autres hébergeurs), et
-https://github.com/aloli-crystal/crystal-beryl[crystal-beryl]
+https://github.com/aloli-crystal/beryl[beryl]
 (outil agentless de provisioning FreeBSD qui consomme les trois).
 Zéro dépendance externe : uniquement `HTTP::Client`, `JSON`,
 `URI` de la stdlib Crystal.
 ====
 
-== Pourquoi dedibox-api
+== Pourquoi api-dedibox
 
 Dedibox (filiale d'Iliad depuis Online.net) continue de vendre sa
 gamme historique de serveurs dédiés, séparée de l'offre cloud
@@ -57,7 +57,7 @@ périmètre réduit aux besoins réels de provisioning bare-metal.
 
 [cols="1,3"]
 |===
-| dedibox-api fait | dedibox-api ne fait pas (limitations API)
+| api-dedibox fait | api-dedibox ne fait pas (limitations API)
 
 | Liste, info, update hostname des serveurs Dedibox.
 | Listing des disques / RAID côté API (récupérable en SSH depuis
@@ -81,8 +81,8 @@ périmètre réduit aux besoins réels de provisioning bare-metal.
 [source,yaml]
 ----
 dependencies:
-  dedibox-api:
-    github: aloli-crystal/crystal-api-dedibox
+  api-dedibox:
+    github: aloli-crystal/api-dedibox
     branch: production
 ----
 
@@ -101,7 +101,7 @@ Convention beryl : stocké dans `~/.beryl/.env.yml` sous
 
 [source,crystal]
 ----
-require "dedibox-api"
+require "api-dedibox"
 
 client = DediboxApi::Client.new(token: ENV["DEDIBOX_TOKEN"])
 
