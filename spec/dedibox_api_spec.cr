@@ -1,7 +1,9 @@
 require "./spec_helper"
+require "yaml"
 
 describe DediboxApi do
   it "expose une version" do
-    DediboxApi::VERSION.should eq("0.1.4")
+    yml = YAML.parse(File.read(File.join(__DIR__, "..", "shard.yml")))
+    DediboxApi::VERSION.should eq(yml["version"].as_s)
   end
 end
