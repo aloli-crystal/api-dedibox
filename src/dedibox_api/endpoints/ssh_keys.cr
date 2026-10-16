@@ -25,7 +25,7 @@ module DediboxApi
         uris = result.as_a.compact_map(&.as_s?)
         uris.compact_map do |uri|
           id = uri.split('/').last.to_i?
-          next nil unless id
+          next unless id
           info(id)
         end
       end

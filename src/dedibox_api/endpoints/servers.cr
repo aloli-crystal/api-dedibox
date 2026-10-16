@@ -46,7 +46,7 @@ module DediboxApi
         return [] of Int32 unless result
         result.as_a.compact_map do |uri_any|
           uri = uri_any.as_s?
-          next nil unless uri
+          next unless uri
           # extrait l'entier en fin de chemin
           uri.split('/').last.to_i?
         end

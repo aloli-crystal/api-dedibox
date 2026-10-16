@@ -3,19 +3,19 @@ require "../spec_helper"
 # Réponse réelle capturée sur serveur 186260 le 24 avril 2026, tronquée
 # aux champs utilisés par la struct Server.
 private FAKE_SERVER_186260 = <<-JSON
-{
-  "id": 186260,
-  "offer": "Start-9-M",
-  "hostname": "cookie",
-  "os": { "name": "custom installation", "version": "" },
-  "power": "ON",
-  "boot_mode": "normal",
-  "ip": [
-    { "address": "10.88.226.29", "type": "private", "reverse": null, "mac": "d8:5e:d3:43:f9:cb" },
-    { "address": "195.154.254.221", "type": "public", "reverse": "195-154-254-221.rev.poneytelecom.eu.", "mac": "d8:5e:d3:43:f9:ca" }
-  ]
-}
-JSON
+  {
+    "id": 186260,
+    "offer": "Start-9-M",
+    "hostname": "cookie",
+    "os": { "name": "custom installation", "version": "" },
+    "power": "ON",
+    "boot_mode": "normal",
+    "ip": [
+      { "address": "10.88.226.29", "type": "private", "reverse": null, "mac": "d8:5e:d3:43:f9:cb" },
+      { "address": "195.154.254.221", "type": "public", "reverse": "195-154-254-221.rev.poneytelecom.eu.", "mac": "d8:5e:d3:43:f9:ca" }
+    ]
+  }
+  JSON
 
 describe DediboxApi::Endpoints::Servers do
   describe "#list" do
