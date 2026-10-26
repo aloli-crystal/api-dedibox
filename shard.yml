@@ -1,5 +1,5 @@
 name: api-dedibox
-version: 0.1.7
+version: 0.1.8
 
 description: >
   Client Crystal pur (stdlib uniquement) pour l'API Dedibox / Online.net
